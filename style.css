@@ -94,6 +94,34 @@ input:focus, select:focus { outline: 2px solid var(--navy-2); outline-offset: 1p
 .table-head h2 { margin: 0; }
 .report-controls { display: flex; flex-wrap: wrap; gap: 8px; }
 .report-controls [hidden] { display: none; }
+
+.login-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: linear-gradient(135deg, var(--navy), var(--navy-2));
+}
+.login-overlay[hidden] { display: none; }
+.login-box {
+  background: #fff;
+  border-radius: 14px;
+  padding: 26px 24px;
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .3);
+}
+.login-box h2 { margin: 0; color: var(--navy); }
+.login-box p { margin: 0; color: var(--muted); font-size: .92rem; }
+.login-box input { width: 100%; text-align: center; }
+.login-box .status-msg { flex: none; padding: 0; min-height: 1.2em; }
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; min-width: 820px; }
 th {

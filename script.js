@@ -1,78 +1,66 @@
 /* =====================================================================
-   طبقة التخزين — الربط الوحيد مع ملف students.json
+   طبقة التخزين — الاتصال بخادم Google Apps Script (يحفظ في students.json على Drive)
    ===================================================================== */
 
-// قراءة البيانات من ملف students.json
-async function loadStudentsFile() {
-  const res = await fetch('students.json?t=' + Date.now(), { cache: 'no-store' });
-  if (!res.ok) throw new Error('تعذّر تحميل students.json');
-  return res.json();
-}
+// ضع هنا رابط النشر (Web app URL) الذي ينتهي بـ /exec
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzor6dduXwz2wKlfeUF0kNTErlAXM34XNbwG0LoVxmScgDtbZ1D5nGeUcCfgPpXLT8p/exec';
 
-// تخزين مقبض الملف في المتصفح حتى لا نطلب اختيار الملف في كل مرة
-function kvDb() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open('attendance-app', 1);
-    req.onupgradeneeded = () => req.result.createObjectStore('kv');
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
+const PW_KEY = 'attendance_password';
+let password = '';        // كلمة السر الحالية
+let currentRev = null;    // رقم نسخة البيانات على الخادم (لمنع تعارض التعديل)
+
+function getStoredPassword() {
+  try { return localStorage.getItem(PW_KEY) || ''; } catch (e) { return ''; }
 }
-async function kvGet(key) {
+function setStoredPassword(p) {
   try {
-    const db = await kvDb();
-    return await new Promise(res => {
-      const r = db.transaction('kv').objectStore('kv').get(key);
-      r.onsuccess = () => res(r.result);
-      r.onerror = () => res(undefined);
-    });
-  } catch (e) { return undefined; }
-}
-async function kvSet(key, value) {
-  try {
-    const db = await kvDb();
-    await new Promise(res => {
-      const tx = db.transaction('kv', 'readwrite');
-      tx.objectStore('kv').put(value, key);
-      tx.oncomplete = tx.onerror = () => res();
-    });
+    if (p) localStorage.setItem(PW_KEY, p); else localStorage.removeItem(PW_KEY);
   } catch (e) { /* تجاهل */ }
 }
 
-let fileHandle = null;
+const API_ERRORS = {
+  unauthorized: 'كلمة السر غير صحيحة',
+  conflict: 'البيانات تغيّرت من جهاز آخر — أعد تحميل الصفحة ثم عدّل مرة أخرى',
+  invalid_data: 'بيانات غير صالحة',
+  bad_request: 'طلب غير صالح',
+  bad_action: 'طلب غير صالح'
+};
 
-// الحصول على إذن الكتابة في ملف students.json (يجب أن تُستدعى من نقرة زر)
-async function getWritableHandle() {
-  if (!fileHandle) fileHandle = await kvGet('students-file');
-  if (fileHandle) {
-    let perm = await fileHandle.queryPermission({ mode: 'readwrite' });
-    if (perm !== 'granted') perm = await fileHandle.requestPermission({ mode: 'readwrite' });
-    if (perm === 'granted') return fileHandle;
-    fileHandle = null;
+async function api(body) {
+  if (!APPS_SCRIPT_URL) throw new Error('لم يتم ضبط APPS_SCRIPT_URL في أول script.js');
+  let res;
+  try {
+    res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // بدون preflight
+      body: JSON.stringify({ ...body, password })
+    });
+  } catch (e) {
+    throw new Error('تعذّر الاتصال بالخادم — تحقق من الإنترنت');
   }
-  // أول مرة: اختر ملف students.json الموجود في مجلد الموقع
-  const [h] = await window.showOpenFilePicker({
-    multiple: false,
-    types: [{ description: 'ملف البيانات students.json', accept: { 'application/json': ['.json'] } }]
-  });
-  if (h.name !== 'students.json') throw new Error('اختر ملف students.json');
-  if ((await h.requestPermission({ mode: 'readwrite' })) !== 'granted') throw new Error('لم يتم السماح بالكتابة في الملف');
-  fileHandle = h;
-  await kvSet('students-file', h);
-  return h;
+  if (!res.ok) throw new Error('تعذّر الاتصال بالخادم (' + res.status + ')');
+  let out;
+  try { out = await res.json(); } catch (e) { throw new Error('رد غير مفهوم من الخادم — راجع إعدادات نشر الـ Script'); }
+  if (!out.ok) {
+    const err = new Error(API_ERRORS[out.error] || out.error || 'خطأ في الخادم');
+    err.code = out.error;
+    throw err;
+  }
+  return out;
 }
 
-// كتابة البيانات في ملف students.json (استبدال محتواه مباشرة، بدون تنزيل أي ملف)
+// قراءة البيانات
+async function loadStudentsFile() {
+  const out = await api({ action: 'load' });
+  currentRev = out.rev;
+  return out.data;
+}
+
+// حفظ البيانات (استبدال محتوى students.json على Drive)
 async function saveStudentsFile(data) {
-  if (!window.showOpenFilePicker) {
-    throw new Error(window.isSecureContext
-      ? 'هذا المتصفح لا يدعم الكتابة المباشرة في الملف — استخدم Chrome أو Edge على الكمبيوتر'
-      : 'الصفحة مفتوحة بعنوان غير آمن — افتحها عبر https أو localhost أو كملف مباشرة');
-  }
-  const h = await getWritableHandle();
-  const w = await h.createWritable();
-  await w.write(JSON.stringify(data, null, 2));
-  await w.close();
+  if (currentRev === null) throw new Error('لم يتم تحميل البيانات — أعد تحميل الصفحة');
+  const out = await api({ action: 'save', data: data, baseRev: currentRev });
+  currentRev = out.rev;
 }
 
 /* =====================================================================
@@ -130,16 +118,51 @@ function normalize(raw) {
 }
 
 /* ===== التحميل ===== */
+function showLogin(msg = '') {
+  $('loginError').textContent = msg;
+  $('loginOverlay').hidden = false;
+  $('loginPassword').focus();
+}
+function hideLogin() {
+  $('loginOverlay').hidden = true;
+  $('loginPassword').value = '';
+}
+
 async function loadData() {
+  loaded = false;
+  data = { students: [], attendance: {} };
+  // بدون كلمة سر محفوظة: نعرض شاشة الدخول مباشرة
+  if (!password) {
+    renderAll();
+    showLogin();
+    return;
+  }
   try {
     data = normalize(await loadStudentsFile());
     loaded = true;
+    setStoredPassword(password);   // كلمة السر صحيحة: نحفظها على هذا الجهاز
+    hideLogin();
     showMsg('تم تحميل البيانات');
   } catch (e) {
-    data = { students: [], attendance: {} };
-    showMsg(e.message || 'تعذّر تحميل البيانات', 'err');
+    if (e.code === 'unauthorized') {
+      password = '';
+      setStoredPassword('');
+    }
+    showLogin(e.message || 'تعذّر تحميل البيانات');
   }
   renderAll();
+}
+
+function logout() {
+  if (dirty && !confirm('توجد تغييرات غير محفوظة وستضيع. هل تريد تسجيل الخروج؟')) return;
+  dirty = false;
+  saveBtn.classList.remove('pending');
+  password = '';
+  setStoredPassword('');
+  loaded = false;
+  data = { students: [], attendance: {} };
+  renderAll();
+  showLogin();
 }
 
 /* ===== حساب نسبة اليوم ===== */
@@ -376,9 +399,15 @@ saveBtn.addEventListener('click', async () => {
     await saveStudentsFile(data);
     dirty = false;
     saveBtn.classList.remove('pending');
-    showMsg('✔ تم حفظ البيانات في students.json');
+    showMsg('✔ تم حفظ البيانات');
   } catch (e) {
-    showMsg(e.name === 'AbortError' ? 'تم إلغاء اختيار الملف — لم يتم الحفظ' : 'فشل الحفظ: ' + (e.message || 'خطأ غير معروف'), 'err');
+    if (e.code === 'unauthorized') {
+      // تم تغيير كلمة السر: نطلب الدخول من جديد (التعديلات غير المحفوظة تبقى في الصفحة)
+      password = '';
+      setStoredPassword('');
+      showLogin('تم تغيير كلمة السر — ادخل بالكلمة الجديدة ثم احفظ مرة أخرى');
+    }
+    showMsg('فشل الحفظ: ' + (e.message || 'خطأ غير معروف'), 'err');
   } finally {
     saveBtn.disabled = false;
   }
@@ -388,7 +417,18 @@ window.addEventListener('beforeunload', e => {
   if (dirty) { e.preventDefault(); e.returnValue = ''; }
 });
 
+// تسجيل الدخول
+$('loginForm').addEventListener('submit', e => {
+  e.preventDefault();
+  password = $('loginPassword').value;
+  $('loginError').textContent = 'جارٍ التحقق...';
+  loadData();
+});
+
+$('logoutBtn').addEventListener('click', logout);
+
 /* ===== البدء ===== */
+password = getStoredPassword();
 syncReportInputs();
 renderAll();
 loadData();

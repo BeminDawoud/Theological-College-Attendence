@@ -7,6 +7,17 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- شاشة الدخول: تغطي الموقع حتى يتم التحقق من كلمة السر -->
+  <div id="loginOverlay" class="login-overlay">
+    <form id="loginForm" class="login-box">
+      <h2>✝ تسجيل الدخول</h2>
+      <p>أدخل كلمة السر للوصول إلى بيانات الطلاب</p>
+      <input type="password" id="loginPassword" placeholder="كلمة السر" autocomplete="current-password" required>
+      <button type="submit" class="btn primary">دخول</button>
+      <div id="loginError" class="status-msg err"></div>
+    </form>
+  </div>
+
   <header class="app-header">
     <h1>✝ متابعة حضور وغياب طلاب الكلية الإكليريكية</h1>
     <p>تسجيل الحضور في صلاتي العشية والباكر وحساب نسبة الحضور اليومية</p>
@@ -27,6 +38,7 @@
 
       <div class="field actions">
         <button id="saveBtn" class="btn primary">💾 حفظ البيانات</button>
+        <button id="logoutBtn" class="btn secondary">🔒 تسجيل خروج</button>
       </div>
 
       <div class="status-msg" id="statusMsg"></div>
@@ -102,6 +114,6 @@
     </section>
   </main>
 
-  <script src="script.js?v=6"></script>
+  <script src="script.js?v=8"></script>
 </body>
 </html>
