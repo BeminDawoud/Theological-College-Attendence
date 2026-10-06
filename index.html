@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>متابعة حضور وغياب طلاب الكلية الإكليريكية</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="app-header">
+    <h1>✝ متابعة حضور وغياب طلاب الكلية الإكليريكية</h1>
+    <p>تسجيل الحضور في صلاتي العشية والباكر وحساب نسبة الحضور اليومية</p>
+  </header>
+
+  <main class="container">
+    <!-- شريط التحكم -->
+    <section class="card control-panel">
+      <div class="field">
+        <label for="datePicker">تاريخ اليوم</label>
+        <input type="date" id="datePicker">
+      </div>
+
+      <div class="field">
+        <label for="savedDates">الأيام المسجلة سابقاً</label>
+        <select id="savedDates"></select>
+      </div>
+
+      <div class="field actions">
+        <button id="saveBtn" class="btn primary">💾 حفظ البيانات</button>
+      </div>
+
+      <div class="status-msg" id="statusMsg"></div>
+    </section>
+
+    <!-- إضافة طالب -->
+    <section class="card">
+      <h2>إضافة طالب جديد</h2>
+      <form id="addForm" class="add-form">
+        <input type="text" id="studentName" placeholder="اسم الطالب" required>
+        <select id="studentYear" required>
+          <option value="الأولى">الفرقة الأولى</option>
+          <option value="الثانية">الفرقة الثانية</option>
+          <option value="الثالثة">الفرقة الثالثة</option>
+          <option value="الرابعة">الفرقة الرابعة</option>
+        </select>
+        <button type="submit" class="btn primary">➕ إضافة</button>
+      </form>
+    </section>
+
+    <!-- جدول الغياب -->
+    <section class="card">
+      <div class="table-head">
+        <h2>كشف الحضور اليومي <span id="dayLabel" class="day-label"></span></h2>
+        <button id="deleteDayBtn" class="btn danger">🗑 حذف بيانات هذا اليوم</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>اسم الطالب</th>
+              <th>الفرقة الدراسية</th>
+              <th>صلاة عشية</th>
+              <th>صلاة باكر</th>
+              <th>نسبة حضور اليوم</th>
+              <th>تفاصيل اليوم</th>
+              <th>حذف</th>
+            </tr>
+          </thead>
+          <tbody id="attendanceBody"></tbody>
+        </table>
+      </div>
+    </section>
+    <!-- تقرير الحضور الأسبوعي / الشهري -->
+    <section class="card">
+      <div class="table-head">
+        <h2>تقرير الحضور <span id="reportLabel" class="day-label"></span></h2>
+        <div class="report-controls">
+          <select id="reportType">
+            <option value="week">أسبوعي</option>
+            <option value="month">شهري</option>
+          </select>
+          <input type="date" id="reportDate" title="اختر أي يوم داخل الأسبوع المطلوب">
+          <input type="month" id="reportMonth" title="اختر الشهر المطلوب" hidden>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>اسم الطالب</th>
+              <th>الفرقة الدراسية</th>
+              <th>حضور</th>
+              <th>غياب</th>
+              <th>اعتذار</th>
+              <th>إجازة</th>
+              <th>نسبة الحضور</th>
+            </tr>
+          </thead>
+          <tbody id="reportBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="script.js?v=6"></script>
+</body>
+</html>
