@@ -7,20 +7,21 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- شاشة الدخول: تغطي الموقع حتى يتم التحقق من كلمة السر -->
-  <div id="loginOverlay" class="login-overlay">
+  <!-- شاشة دخول المشرف -->
+  <div id="loginOverlay" class="login-overlay" hidden>
     <form id="loginForm" class="login-box">
-      <h2>✝ تسجيل الدخول</h2>
-      <p>أدخل كلمة السر للوصول إلى بيانات الطلاب</p>
+      <h2>🔓 دخول المشرف</h2>
+      <p>أدخل كلمة السر للاطلاع على البيانات وتعديلها</p>
       <input type="password" id="loginPassword" placeholder="كلمة السر" autocomplete="current-password" required>
       <button type="submit" class="btn primary">دخول</button>
+      <button type="button" id="loginCancel" class="btn secondary">إلغاء</button>
       <div id="loginError" class="status-msg err"></div>
     </form>
   </div>
 
   <header class="app-header">
     <h1>✝ متابعة حضور وغياب طلاب الكلية الإكليريكية</h1>
-    <p>تسجيل الحضور في صلاتي العشية والباكر وحساب نسبة الحضور اليومية</p>
+    <p>تسجيل الحضور في صلاتي العشية والباكر</p>
   </header>
 
   <main class="container">
@@ -31,21 +32,25 @@
         <input type="date" id="datePicker">
       </div>
 
-      <div class="field">
+      <div class="field admin-only">
         <label for="savedDates">الأيام المسجلة سابقاً</label>
         <select id="savedDates"></select>
       </div>
 
       <div class="field actions">
-        <button id="saveBtn" class="btn primary">💾 حفظ البيانات</button>
-        <button id="logoutBtn" class="btn secondary">🔒 تسجيل خروج</button>
+        <button id="saveBtn" class="btn primary">💾 حفظ الحضور</button>
+        <button id="adminBtn" class="btn secondary guest-only">🔓 دخول المشرف</button>
+        <button id="logoutBtn" class="btn secondary admin-only">🔒 خروج المشرف</button>
       </div>
 
       <div class="status-msg" id="statusMsg"></div>
+      <div class="guest-note guest-only">
+        وضع تسجيل الحضور: يمكنك تسجيل الحضور وحفظه فقط. الاطلاع على البيانات المسجلة وتعديلها للمشرف بكلمة السر.
+      </div>
     </section>
 
     <!-- إضافة طالب -->
-    <section class="card">
+    <section class="card admin-only">
       <h2>إضافة طالب جديد</h2>
       <form id="addForm" class="add-form">
         <input type="text" id="studentName" placeholder="اسم الطالب" required>
@@ -63,7 +68,7 @@
     <section class="card">
       <div class="table-head">
         <h2>كشف الحضور اليومي <span id="dayLabel" class="day-label"></span></h2>
-        <button id="deleteDayBtn" class="btn danger">🗑 حذف بيانات هذا اليوم</button>
+        <button id="deleteDayBtn" class="btn danger admin-only">🗑 حذف بيانات هذا اليوم</button>
       </div>
       <div class="table-wrap">
         <table>
@@ -73,17 +78,18 @@
               <th>الفرقة الدراسية</th>
               <th>صلاة عشية</th>
               <th>صلاة باكر</th>
-              <th>نسبة حضور اليوم</th>
-              <th>تفاصيل اليوم</th>
-              <th>حذف</th>
+              <th class="admin-only">نسبة حضور اليوم</th>
+              <th class="admin-only">تفاصيل اليوم</th>
+              <th class="admin-only">حذف</th>
             </tr>
           </thead>
           <tbody id="attendanceBody"></tbody>
         </table>
       </div>
     </section>
+
     <!-- تقرير الحضور الأسبوعي / الشهري -->
-    <section class="card">
+    <section class="card admin-only">
       <div class="table-head">
         <h2>تقرير الحضور <span id="reportLabel" class="day-label"></span></h2>
         <div class="report-controls">
@@ -114,6 +120,6 @@
     </section>
   </main>
 
-  <script src="script.js?v=8"></script>
+  <script src="script.js?v=10"></script>
 </body>
 </html>

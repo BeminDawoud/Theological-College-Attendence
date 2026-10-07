@@ -95,6 +95,19 @@ input:focus, select:focus { outline: 2px solid var(--navy-2); outline-offset: 1p
 .report-controls { display: flex; flex-wrap: wrap; gap: 8px; }
 .report-controls [hidden] { display: none; }
 
+/* وضع الزائر: إخفاء عناصر المشرف، ووضع المشرف: إخفاء عناصر الزائر */
+body:not(.admin) .admin-only { display: none !important; }
+body.admin .guest-only { display: none !important; }
+.guest-note {
+  flex-basis: 100%;
+  background: #eef3ff;
+  border-right: 4px solid var(--navy-2);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: .9rem;
+  color: var(--navy);
+}
+
 .login-overlay {
   position: fixed;
   inset: 0;
