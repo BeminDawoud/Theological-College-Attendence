@@ -96,6 +96,7 @@ let loaded = false;       // لا نحفظ قبل نجاح التحميل حتى
 let dirty = false;        // (مشرف) توجد تغييرات لم تُحفظ بعد
 let guestPending = {};    // (زائر) تسجيلات لم تُرسل بعد:  "date|id|period" → {date,id,period,value}
 let guestLocked = {};     // (زائر) تسجيلات أُرسلت في هذه الجلسة (لا يمكن تعديلها)
+let guestToday = {};      // (زائر) ما هو مسجّل فعلاً في النطاق المسموح (اليوم) — للعرض فقط
 
 const $ = id => document.getElementById(id);
 const datePicker = $('datePicker');
@@ -166,6 +167,7 @@ async function enterGuest() {
   dirty = false;
   guestPending = {};
   guestLocked = {};
+  guestToday = {};
   data = { students: [], attendance: {} };
   document.body.classList.remove('admin');
   setPending(false);
@@ -173,11 +175,12 @@ async function enterGuest() {
   try {
     const out = await loadGuestInfo();
     data.students = normalize({ students: out.students }).students;
+    guestToday = out.attendance || {};
     datePicker.min = out.minDate;
     datePicker.max = out.today;
     currentDate = out.today;
     loaded = true;
-    showMsg('وضع تسجيل الحضور — اختر الحالة لكل طالب ثم اضغط "حفظ الحضور"');
+    showMsg('وضع تسجيل الحضور — الخانات المقفلة سُجّلت مسبقاً، سجّل الباقي ثم اضغط "حفظ الحضور"');
   } catch (e) {
     showMsg(e.message || 'تعذّر تحميل قائمة الطلاب', 'err');
   }
@@ -341,11 +344,11 @@ function renderTable() {
       if (isAdmin) {
         v = rec[p.key] || '';
       } else {
-        // الزائر يرى فقط ما أدخله هو في هذه الجلسة
+        // الزائر يرى ما سُجّل في النطاق المسموح (اليوم) للقراءة فقط، وما يدخله هو الآن قبل الحفظ
         const k = cellKey(currentDate, s.id, p.key);
-        const own = guestPending[k] || guestLocked[k];
-        v = own ? own.value : '';
-        disabled = !!guestLocked[k];
+        const saved = (((guestToday[currentDate] || {})[s.id]) || {})[p.key] || (guestLocked[k] && guestLocked[k].value) || '';
+        if (saved) { v = saved; disabled = true; }
+        else if (guestPending[k]) v = guestPending[k].value;
       }
       const opts = '<option value="">— غير مسجل —</option>' +
         STATUSES.map(st => `<option value="${st}"${st === v ? ' selected' : ''}>${st}</option>`).join('');
@@ -536,11 +539,28 @@ async function guestSave() {
     showMsg(skipped.size
       ? `✔ تم حفظ ${out.saved} تسجيل — وتم تخطي ${skipped.size} لأنها مسجلة مسبقاً`
       : `✔ تم حفظ ${out.saved} تسجيل`, skipped.size ? 'err' : 'ok');
+    await refreshGuestToday();
     renderTable();
   } catch (e) {
     showMsg('فشل الحفظ: ' + (e.message || 'خطأ غير معروف'), 'err');
   }
 }
+
+// زائر: تحديث المسجّل اليوم من الخادم (يظهر ما سجّله الآخرون)
+async function refreshGuestToday() {
+  try {
+    const out = await loadGuestInfo();
+    guestToday = out.attendance || {};
+    guestLocked = {};   // كل ما أُرسل صار ضمن المسجّل من الخادم
+  } catch (e) { /* نُبقي ما لدينا */ }
+}
+
+// عند العودة للصفحة بعد فترة: حدّث ما سُجّل اليوم (إن لم تكن هناك تسجيلات معلّقة)
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState !== 'visible' || isAdmin || !loaded || Object.keys(guestPending).length) return;
+  await refreshGuestToday();
+  if (!isAdmin) renderTable();
+});
 
 window.addEventListener('beforeunload', e => {
   if (hasUnsaved()) { e.preventDefault(); e.returnValue = ''; }
